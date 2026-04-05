@@ -3,7 +3,7 @@ name: Full CI/CD Pipeline
 on:
   push:
     branches:
-      - b1 # change if needed
+      - b1
 
 jobs:
   ci-cd:
@@ -20,58 +20,31 @@ jobs:
         with:
           node-version: 18
 
-      # ✅ 3. Install backend dependencies
-      - name: Install backend dependencies
+      # ✅ 3. Install ALL dependencies (frontend + backend)
+      - name: Install all dependencies
         run: |
-          cd server
-          npm install
+          cd server && npm install
+          cd ../client && npm install
 
-      # ✅ 4. Install frontend dependencies
-      - name: Install frontend dependencies
+      # ✅ 4. Run ALL tests (frontend + backend)
+      - name: Run all tests
         run: |
-          cd client
-          npm install
+          cd server && npm test || echo "No backend tests"
+          cd ../client && npm test -- --watchAll=false || echo "No frontend tests"
 
-      # ✅ 5. Run backend tests (optional)
-      - name: Run backend tests
+      # ✅ 5. Build project (frontend)
+      - name: Build project
         run: |
-          cd server
-          npm test || echo "No backend tests"
+          cd client && npm run build
 
-      # ✅ 6. Run frontend tests (optional)
-      - name: Run frontend tests
-        run: |
-          cd client
-          npm test -- --watchAll=false || echo "No frontend tests"
-
-      # ✅ 7. Build frontend
-      - name: Build frontend
-        run: |
-          cd client
-          npm run build
-
-      # ✅ 8. Setup Docker
+      # ✅ 6. Setup Docker
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      # ✅ 9. Login to Docker Hub
-      - name: Login to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      # ✅ 10. Build Docker Image (uses your Dockerfile)
+      # ✅ 7. Build Docker Image (validation only)
       - name: Build Docker Image
-        run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/placement-tracker:latest .
+        run: docker build -t placement-tracker:latest .
 
-      # ✅ 11. Push Docker Image
-      - name: Push Docker Image
-        run: |
-          docker push ${{ secrets.DOCKER_USERNAME }}/placement-tracker:latest
-
-      # ✅ 12. Trigger deployment on Render
+      # ✅ 8. Trigger deployment on Render
       - name: Deploy to Render
-        run: |
-          curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
